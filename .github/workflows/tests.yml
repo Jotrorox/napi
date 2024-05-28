@@ -18,7 +18,6 @@ jobs:
           with:
             java-version: '21'
             distribution: 'temurin'
-        - name: Setup Gradle
-          run: ./gradlew build
+            cache: gradle
         - name: Test with Gradle
-          run: ./gradlew clean test
+          run: gradle clean test
