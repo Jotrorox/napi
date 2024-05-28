@@ -1,18 +1,18 @@
-package com.jotrorox
+package com.jotrorox.napi
 
 import com.google.gson.Gson
-import com.jotrorox.Articles.author
-import com.jotrorox.Articles.content
-import com.jotrorox.Articles.countryCode
-import com.jotrorox.Articles.description
-import com.jotrorox.Articles.fetchedAt
-import com.jotrorox.Articles.id
-import com.jotrorox.Articles.publishedAt
-import com.jotrorox.Articles.sourceId
-import com.jotrorox.Articles.sourceName
-import com.jotrorox.Articles.title
-import com.jotrorox.Articles.url
-import com.jotrorox.Articles.urlToImage
+import com.jotrorox.napi.Articles.author
+import com.jotrorox.napi.Articles.content
+import com.jotrorox.napi.Articles.countryCode
+import com.jotrorox.napi.Articles.description
+import com.jotrorox.napi.Articles.fetchedAt
+import com.jotrorox.napi.Articles.id
+import com.jotrorox.napi.Articles.publishedAt
+import com.jotrorox.napi.Articles.sourceId
+import com.jotrorox.napi.Articles.sourceName
+import com.jotrorox.napi.Articles.title
+import com.jotrorox.napi.Articles.url
+import com.jotrorox.napi.Articles.urlToImage
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import org.jetbrains.exposed.sql.*
@@ -206,7 +206,7 @@ fun getDateFromString(date: String): LocalDateTime {
  */
 fun isArticleStored(article: Article): Boolean {
     return transaction {
-        Articles.selectAll().where { Articles.title eq article.title }.count() > 0
+        Articles.selectAll().where { title eq article.title }.count() > 0
     }
 }
 

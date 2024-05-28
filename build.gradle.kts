@@ -13,6 +13,8 @@ repositories {
 val exposedVersion = "0.50.1"
 
 dependencies {
+    testImplementation(kotlin("test"))
+
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("org.xerial:sqlite-jdbc:3.44.1.0")
     implementation("org.jetbrains.exposed", "exposed-core", exposedVersion)
@@ -22,16 +24,20 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.jotrorox.NapiKt")
+    mainClass.set("com.jotrorox.napi.MainKt")
 }
 
 kotlin {
     jvmToolchain(21)
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "com.jotrorox.NapiKt"
+        attributes["Main-Class"] = "com.jotrorox.napi.MainKt"
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(sourceSets.main.get().output)
