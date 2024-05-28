@@ -2,6 +2,8 @@ package com.jotrorox.superAPI
 
 import com.google.gson.Gson
 import com.jotrorox.superAPI.Articles.select
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Table.Dual.autoIncrement
@@ -69,7 +71,7 @@ enum class CountryCode(val code: String) {
     US("us")
 }
 
-fun getNews(countryCode: CountryCode): ApiResponse? {
+fun getNews(apiKey: String, countryCode: CountryCode): ApiResponse? {
     val params = arrayOf("country" to countryCode, "apiKey" to System.getenv("NEWS_API_KEY"))
     val queryString = params.joinToString("&", prefix = "?") { (key, value) -> "$key=$value" }
 
@@ -130,13 +132,41 @@ fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
     }
 }
 
-fun main() {
+fun main(args: Array<String>) {
+    val parser = ArgParser("NAPI")
+    val apiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
+    val countryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
+    parser.parse(args)
+
+    val envApiKey = System.getenv("NEWS_API_KEY")
+    val envCountryCode = System.getenv("NEWS_COUNTRY_CODE")
+
+    if (apiKey == null && envApiKey == null) {
+        println("Error: No API key provided. Please set the NEWS_API_KEY environment variable or use the -k/--key option.")
+        return
+    }
+
+    if (countryCode == null && envCountryCode == null) {
+        println("Error: No country code provided. Please set the NEWS_COUNTRY_CODE environment variable or use the -c/--country-code option.")
+        return
+    }
+
+    val finalCountryCodeString = (countryCode ?: envCountryCode).toUpperCase()
+
+    val finalCountryCode = try {
+        CountryCode.valueOf(finalCountryCodeString)
+    } catch (e: IllegalArgumentException) {
+        println("Error: Invalid country code provided. Please use a valid country code.")
+        return
+    }
+
     setupDB()
 
-    val countryCode = CountryCode.DE
-    val news = getNews(countryCode)
+    val finalApiKey = apiKey ?: envApiKey
+
+    val news = getNews(finalApiKey, finalCountryCode)
 
     if (news != null) {
-        insertArticles(news.articles, countryCode)
+        insertArticles(news.articles, finalCountryCode)
     }
 }
