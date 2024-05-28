@@ -19,6 +19,6 @@ jobs:
             java-version: '21'
             distribution: 'temurin'
         - name: Setup Gradle
-          run: ./gradlew wrapper --gradle-version 8.5
+          uses: gradle/wrapper-validation-action@v3
         - name: Test with Gradle
           run: ./gradlew clean test
