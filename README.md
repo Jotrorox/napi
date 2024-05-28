@@ -26,7 +26,9 @@
 
 ## :dart: About ##
 
-JToml is a simple Java Library to read and write TOML files. Right now it's not feature complete, but I'm working on it. If you want to help me, feel free to do so.
+Napi is a simple project that allows you to query different APIs and cache the data.\
+This project is still in development and I am working on adding more features to it.\
+If you have any suggestions or ideas, feel free to open an issue or a pull request.
 
 ## :sparkles: Features ##
 
