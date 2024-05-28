@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.23"
+    id("org.graalvm.buildtools.native") version "0.10.2"
 }
 
 group = "com.jotrorox"
@@ -24,6 +25,23 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
 kotlin {
     jvmToolchain(21)
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("my-app")
+            mainClass.set("org.jackup.Runner")
+            buildArgs.add("-O4")
+        }
+        named("test") {
+            buildArgs.add("-O0")
+        }
+    }
+    binaries.all {
+        buildArgs.add("")
+    }
 }

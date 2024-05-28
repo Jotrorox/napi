@@ -277,7 +277,7 @@ fun main(args: Array<String>) {
     }
 
     // Convert the country code to upper case
-    val finalCountryCodeString = (countryCode ?: envCountryCode).toUpperCase()
+    val finalCountryCodeString = (countryCode ?: envCountryCode).uppercase()
 
     // Convert the country code string to a CountryCode enum entry
     val finalCountryCode = try {
