@@ -15,6 +15,8 @@ import java.net.URI
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 data class Source(
     val id: String,
@@ -164,9 +166,11 @@ fun main(args: Array<String>) {
 
     val finalApiKey = apiKey ?: envApiKey
 
-    val news = getNews(finalApiKey, finalCountryCode)
-
-    if (news != null) {
-        insertArticles(news.articles, finalCountryCode)
-    }
+    val executor = Executors.newSingleThreadScheduledExecutor()
+    executor.scheduleAtFixedRate({
+        val news = getNews(finalApiKey, finalCountryCode)
+        if (news != null) {
+            insertArticles(news.articles, finalCountryCode)
+        }
+    }, 0, 60, TimeUnit.MINUTES)
 }
