@@ -1,8 +1,19 @@
 package com.jotrorox.superAPI
 
 import com.google.gson.Gson
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.Table.Dual.autoIncrement
+import org.jetbrains.exposed.sql.Table.Dual.integer
+import org.jetbrains.exposed.sql.Table.Dual.varchar
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.HttpURLConnection
 import java.net.URI
+import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.util.*
 
 data class Source(
     val id: String,
@@ -19,6 +30,22 @@ data class Article(
     val publishedAt: String,
     val content: String
 )
+
+data object Articles : Table("articles") {
+    private val id = integer("id").autoIncrement()
+    val title = varchar("title", 1024)
+    val author = varchar("author", 1024)
+    val description = varchar("description", 4096).nullable()
+    val url = varchar("url", 1024)
+    val urlToImage = varchar("urlToImage", 1024).nullable()
+    val publishedAt = varchar("publishedAt", 1024)
+    val content = varchar("content", 8192).nullable()
+    val sourceName = varchar("sourceName", 1024)
+    val sourceId = varchar("sourceId", 1024)
+    val fetchedAt = varchar("fetchedAt", 1024)       // yyyy-MM-dd HH:mm:ss
+    val countryCode = varchar("countryCode", 2)
+    override val primaryKey = PrimaryKey(id)
+}
 
 data class ApiResponse(
     val status: String,
@@ -62,9 +89,48 @@ fun getNews(countryCode: CountryCode): ApiResponse? {
     return Gson().fromJson(response, ApiResponse::class.java)
 }
 
+fun setupDB() {
+    Database.connect("jdbc:sqlite:news.db", "org.sqlite.JDBC")
+    transaction {
+        SchemaUtils.create(Articles)
+    }
+}
+
+fun getCurrentTime(): String {
+    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+}
+
+fun getDateFromString(date: String): LocalDateTime {
+    return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId()).toLocalDateTime()
+}
+
+fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
+    transaction {
+        articles.forEach { article ->
+            Articles.insert {
+                it[title] = article.title
+                it[author] = article.author
+                it[description] = article.description
+                it[url] = article.url
+                it[urlToImage] = article.urlToImage
+                it[publishedAt] = article.publishedAt
+                it[content] = article.content
+                it[sourceName] = article.source.name
+                it[sourceId] = article.source.id
+                it[fetchedAt] = getCurrentTime()
+                it[Articles.countryCode] = countryCode.code
+            }
+        }
+    }
+}
+
 fun main() {
-    val news = getNews(CountryCode.DE)
-    news?.articles?.forEach { article ->
-        println(article.title)
+    setupDB()
+
+    val countryCode = CountryCode.DE
+    val news = getNews(countryCode)
+
+    if (news != null) {
+        insertArticles(news.articles, countryCode)
     }
 }

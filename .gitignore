@@ -237,3 +237,4 @@ deploy/
 javadoc/
 cwallet.sso.lck
 secring.*
+news.db
