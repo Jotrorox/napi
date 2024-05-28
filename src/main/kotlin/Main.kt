@@ -1,13 +1,12 @@
 package com.jotrorox.superAPI
 
 import com.google.gson.Gson
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.Table
+import com.jotrorox.superAPI.Articles.select
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Table.Dual.autoIncrement
 import org.jetbrains.exposed.sql.Table.Dual.integer
 import org.jetbrains.exposed.sql.Table.Dual.varchar
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.HttpURLConnection
 import java.net.URI
@@ -104,9 +103,16 @@ fun getDateFromString(date: String): LocalDateTime {
     return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId()).toLocalDateTime()
 }
 
+fun isArticleStored(article: Article): Boolean {
+    return transaction {
+        Articles.selectAll().where { Articles.title eq article.title }.count() > 0
+    }
+}
+
 fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
     transaction {
         articles.forEach { article ->
+            if (isArticleStored(article)) return@forEach
             Articles.insert {
                 it[title] = article.title
                 it[author] = article.author
