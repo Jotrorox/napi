@@ -138,10 +138,12 @@ fun main(args: Array<String>) {
     val parser = ArgParser("NAPI")
     val apiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
     val countryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
+    val speed by parser.option(ArgType.Int, shortName = "s", fullName = "speed", description = "Refresh speed in minutes")
     parser.parse(args)
 
     val envApiKey = System.getenv("NEWS_API_KEY")
     val envCountryCode = System.getenv("NEWS_COUNTRY_CODE")
+    val envSpeed = System.getenv("NEWS_REFRESH_SPEED")?.toIntOrNull()
 
     if (apiKey == null && envApiKey == null) {
         println("Error: No API key provided. Please set the NEWS_API_KEY environment variable or use the -k/--key option.")
@@ -165,6 +167,7 @@ fun main(args: Array<String>) {
     setupDB()
 
     val finalApiKey = apiKey ?: envApiKey
+    val finalSpeed = speed ?: envSpeed ?: 60
 
     val executor = Executors.newSingleThreadScheduledExecutor()
     executor.scheduleAtFixedRate({
@@ -172,5 +175,5 @@ fun main(args: Array<String>) {
         if (news != null) {
             insertArticles(news.articles, finalCountryCode)
         }
-    }, 0, 60, TimeUnit.MINUTES)
+    }, 0, finalSpeed.toLong(), TimeUnit.MINUTES)
 }
