@@ -34,8 +34,8 @@ If you have any suggestions or ideas, feel free to open an issue or a pull reque
 
 :heavy_check_mark: Querying the API\
 :heavy_check_mark: Caching the Data\
-:clock1: Adding Docker Support\
-:heavy_multiplication_x: Exposing an api\
+:heavy_check_mark: Adding Docker Support\
+:clock1: Exposing an api\
 :heavy_multiplication_x: Allowing more sources
 
 ## :white_check_mark: Development Requirements ##
@@ -66,8 +66,15 @@ $ ./gradlew clean test
 
 ## :dash: Getting Started ##
 
-Since I am still working on the docker support, you can use the jar file to get started.\
-That means you can follow the steps above and then use the jar file to run the project.
+Since 1.1 there is a easy Docker Setup just ensure you have docker installed.
+
+```bash
+# Pull the project
+$ docker pull jotrorox/napi
+
+# Start the bot
+$ docker run -e NEWS_API_KEY=<yourAPIKEY> -e NEWS_COUNTRY_CODE=<yourCountryCode> jotrorox/napi
+```
 
 ## :raised_hands: Contributing ##
 
