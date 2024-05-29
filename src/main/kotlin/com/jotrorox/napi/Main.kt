@@ -163,7 +163,9 @@ fun getNews(apiKey: String, countryCode: CountryCode): ApiResponse? {
  */
 fun setupDB() {
     Database.connect("jdbc:sqlite:news.db", "org.sqlite.JDBC")
-    SchemaUtils.create(Articles)
+    transaction {
+        SchemaUtils.create(Articles)
+    }
 }
 
 /**
