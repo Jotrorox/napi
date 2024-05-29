@@ -5,13 +5,12 @@ WORKDIR /app
 
 RUN apk add --no-cache curl jq
 
-# Replace "user/repo" with your GitHub username and repository name
 RUN curl -s https://api.github.com/repos/jotrorox/napi/releases/latest \
 | jq -r ".assets[] | select(.name | test(\"jar$\")) | .browser_download_url" \
 | xargs curl -L -o app.jar
 
 # Stage 2: Run the jar file
-FROM openjdk:21-jdk
+FROM sapmachine:21.0.3-jre-ubuntu-focal
 
 WORKDIR /app
 
