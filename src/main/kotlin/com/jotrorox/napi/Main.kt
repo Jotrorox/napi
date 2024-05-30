@@ -1,7 +1,5 @@
 package com.jotrorox.napi
 
-import com.akuleshov7.ktoml.Toml
-import com.akuleshov7.ktoml.file.TomlFileReader
 import com.google.gson.Gson
 import com.jotrorox.napi.Articles.author
 import com.jotrorox.napi.Articles.content
@@ -15,17 +13,11 @@ import com.jotrorox.napi.Articles.sourceName
 import com.jotrorox.napi.Articles.title
 import com.jotrorox.napi.Articles.url
 import com.jotrorox.napi.Articles.urlToImage
-import kotlinx.cli.ArgParser
-import kotlinx.cli.ArgType
-import kotlinx.serialization.serializer
-import org.ini4j.Ini
+import com.jotrorox.napi.util.config.getConfig
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.*
@@ -133,237 +125,6 @@ enum class CountryCode(val code: String) {
     KR("kr"),  // South Korea
     RU("ru"),  // Russia
     US("us")   // United States
-}
-
-/**
- * This class `Config` is responsible for holding the configuration data required for the main application.
- *
- * @property apiKey String: The Key provided by the API to authorize interactions with it. This key is private and thus only accessible through a getter method.
- * @property countryCode CountryCode: The Country Code to be used with the API. This is private and can only be accessed through its associated getter.
- * @property refreshInterval Long: The refresh interval for the main application in minutes. Available through a getter as it is private.
- *
- * The class also includes getter methods:
- *
- * - getApiKey: A method that returns the `apiKey`.
- * - getCountryCode: A method that returns `countryCode`.
- * - getRefreshInterval: A method that returns `refreshInterval`.
- *
- * This class also contains a `Companion object` which includes a method `getConfig` that is responsible for creating a `Config` instance from
- * the command-line arguments, environment variables, and a configuration file. This function is crucial for processing and validating the configuration
- * parameters like API key, Country code and Refresh interval. It can return null in case of missing or invalid mandatory parameters.
- *
- */
-data class Config(
-    private val apiKey: String,
-    private val countryCode: CountryCode,
-    private val refreshInterval: Long
-) {
-    /**
-     * This function returns the API key in String format. This API key is used to authorize interactions with the API.
-     * It is invoked on an instance of the Config class.
-     *
-     * @return apiKey: The API key used for interactions with the API.
-     */
-    fun getApiKey() = apiKey
-
-    /**
-     * This function returns the Country Code in `CountryCode` format. This Country Code is used to specify the region for the API.
-     * It is invoked on an instance of the Config class.
-     *
-     * @return countryCode: The Country Code used for region specification with the API.
-     */
-    fun getCountryCode() = countryCode
-
-    /**
-     * This function returns the refresh interval in Long format. This interval is used to specify the refresh rate for the main application.
-     * It is invoked on an instance of the Config class.
-     *
-     * @return refreshInterval: The refresh interval for the main application in minutes.
-     */
-    fun getRefreshInterval() = refreshInterval
-
-    companion object {
-        /**
-         * This function is a part of `Companion object` of `Config` class and is responsible for creating a `Config`
-         * instance. It reads configuration from different sources (command-line arguments, environment variables, and
-         * a configuration file), validates them, and then creates a new instance of `Config` class.
-         *
-         * It is invoked open execution of the application and on every refresh during its runtime.
-         *
-         * @param args Array<String>: Accepts an array of arguments passed on the terminal while execution. The
-         * arguments should include key (-k/--key), country code (-c/--country-code), refresh speed (-r/--refresh-speed),
-         * and whether the current config needs to be saved as a file (-s/--save-config).
-         *
-         * @return Config?: A new instance of `Config` if all parameters have valid values, null otherwise.
-         */
-        fun getConfig(args: Array<String>): Config? {
-            val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-
-            if (Files.exists(Paths.get("$xdgConfigPath/napi/config.toml"))) {
-                return TomlFileReader.decodeFromFile<Config>(serializer(), "$xdgConfigPath/napi/config.toml")
-            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.json"))) {
-                return Gson().fromJson(
-                    Files.readString(Paths.get("$xdgConfigPath/napi/config.json")),
-                    Config::class.java
-                )
-            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.properties"))) {
-                val props = Properties()
-                props.load(Files.newInputStream(Paths.get("$xdgConfigPath/napi/config.properties")))
-                return Config(
-                    apiKey = props.getProperty("apiKey"),
-                    countryCode = CountryCode.valueOf(props.getProperty("countryCode")),
-                    refreshInterval = props.getProperty("refreshInterval").toLong()
-                )
-            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.ini"))) {
-                val ini = Ini()
-                ini.load(Files.newInputStream(Paths.get("$xdgConfigPath/napi/config.ini")))
-                return Config(
-                    apiKey = ini.get("config", "apiKey"),
-                    countryCode = CountryCode.valueOf(ini.get("config", "countryCode")),
-                    refreshInterval = ini.get("config", "refreshInterval").toLong()
-                )
-            }
-
-            // Create a command-line argument parser
-            val parser = ArgParser("NAPI")
-
-            // Define the command-line arguments
-            val argApiKey by parser.option(
-                ArgType.String,
-                shortName = "k",
-                fullName = "key",
-                description = "News API key"
-            )
-            val argCountryCode by parser.option(
-                ArgType.String,
-                shortName = "c",
-                fullName = "country-code",
-                description = "Country code"
-            )
-            val argSpeed by parser.option(
-                ArgType.Int,
-                shortName = "r",
-                fullName = "refresh-speed",
-                description = "Refresh speed in minutes"
-            )
-            val saveconfig by parser.option(
-                ArgType.Boolean,
-                shortName = "s",
-                fullName = "save-config",
-                description = "Save the current config into a file (default is TOML)"
-            )
-
-            // Parse the command-line arguments
-            parser.parse(args)
-
-            // Retrieve the environment variables
-            val envApiKey = System.getenv("NEWS_API_KEY")
-            val envCountryCode = System.getenv("NEWS_COUNTRY_CODE")
-            val envSpeed = System.getenv("NEWS_REFRESH_SPEED")?.toIntOrNull()
-
-            // Validate the API key
-            argApiKey ?: envApiKey ?: run {
-                println("Error: No API key provided. Please set the NEWS_API_KEY environment variable or use the -k/--key option.")
-                return null
-            }
-
-            // Validate the country code
-            argCountryCode ?: envCountryCode ?: run {
-                println("Error: No country code provided. Please set the NEWS_COUNTRY_CODE environment variable or use the -c/--country-code option.")
-                return null
-            }
-
-            // Convert the country code string to a CountryCode enum entry
-            val countryCode = try {
-                CountryCode.valueOf((argCountryCode ?: envCountryCode).uppercase())
-            } catch (e: IllegalArgumentException) {
-                println("Error: Invalid country code provided. Please use a valid country code.")
-                return null
-            }
-
-            // Determine the final API key and refresh speed
-            val apiKey = argApiKey ?: envApiKey
-            val speed = argSpeed ?: envSpeed ?: 60
-
-            val config = Config(apiKey, countryCode, speed.toLong())
-
-            // If the flag is set save the config
-            if (saveconfig == true) config.saveToToml()
-
-            return config
-        }
-    }
-
-    /**
-     * This function saves the config data to a TOML file. The created TOML file can then be used for future
-     * configurations. The function abstracts the intricacies of working with TOML files, providing a simplified
-     * interaction layer for configuration management.
-     *
-     * It is invoked on an instance of the Config class.
-     */
-    private fun saveToToml() {
-        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-        val tomlFile = File("$xdgConfigPath/napi/config.toml")
-        tomlFile.parentFile.mkdirs()
-        tomlFile.createNewFile()
-        val tomlString = Toml.encodeToString(serializer(), this)
-        tomlFile.writeText(tomlString)
-    }
-
-
-    /**
-     * This function saves the configuration data to a JSON file. The JSON file can then be used for future
-     * configurations. The function abstracts the intricacies of working with JSON files, providing a simplified
-     * interaction layer for configuration management.
-     *
-     * It's invoked on an instance of the Config class.
-     */
-    private fun saveToJson() {
-        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-        val jsonFile = File("$xdgConfigPath/napi/config.json")
-        jsonFile.parentFile.mkdirs()
-        jsonFile.createNewFile()
-        val jsonString = Gson().toJson(this)
-        jsonFile.writeText(jsonString)
-    }
-
-    /**
-     * This function saves the configuration data to a Properties file. The Properties file can then be used for future
-     * configurations. The function abstracts the intricacies of working with Properties files, providing a simplified
-     * interaction layer for configuration management.
-     *
-     * It's invoked on an instance of the Config class.
-     */
-    private fun saveToProperties() {
-        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-        val propsFile = File("$xdgConfigPath/napi/config.properties")
-        propsFile.parentFile.mkdirs()
-        propsFile.createNewFile()
-        val props = Properties()
-        props.setProperty("apiKey", apiKey)
-        props.setProperty("countryCode", countryCode.name)
-        props.setProperty("refreshInterval", refreshInterval.toString())
-        props.store(propsFile.outputStream(), null)
-    }
-
-    /**
-     * This function saves the configuration data to an INI file. The INI file can then be used for future
-     * configurations. The function abstracts the intricacies of working with INI files, providing a simplified
-     * interaction layer for configuration management.
-     *
-     * It's invoked on an instance of the Config class.
-     */
-    private fun saveToIni() {
-        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-        val iniFile = File("$xdgConfigPath/napi/config.ini")
-        iniFile.parentFile.mkdirs()
-        iniFile.createNewFile()
-        val ini = Ini()
-        ini.put("config", "apiKey", apiKey)
-        ini.put("config", "countryCode", countryCode.name)
-        ini.put("config", "refreshInterval", refreshInterval.toString())
-        ini.store(iniFile.outputStream())
-    }
 }
 
 /**
@@ -495,7 +256,7 @@ fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
  * @param args The command-line arguments. This is an array of strings.
  */
 fun main(args: Array<String>) {
-    val config = Config.getConfig(args) ?: return
+    val config = getConfig(args) ?: return
 
     // Set up the database
     setupDB()
