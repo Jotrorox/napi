@@ -136,6 +136,53 @@ data class Config(
     fun getApiKey() = apiKey
     fun getCountryCode() = countryCode
     fun getRefreshInterval() = refreshInterval
+
+    companion object {
+        fun getConfig(args: Array<String>): Config? {
+            // Create a command-line argument parser
+            val parser = ArgParser("NAPI")
+
+            // Define the command-line arguments
+            val argApiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key").
+            val argCountryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
+            val argSpeed by parser.option(ArgType.Int, shortName = "s", fullName = "speed", description = "Refresh speed in minutes")
+
+            // Parse the command-line arguments
+            parser.parse(args)
+
+            // Retrieve the environment variables
+            val envApiKey = System.getenv("NEWS_API_KEY")
+            val envCountryCode = System.getenv("NEWS_COUNTRY_CODE")
+            val envSpeed = System.getenv("NEWS_REFRESH_SPEED")?.toIntOrNull()
+
+            // Validate the API key
+            argApiKey ?: envApiKey ?: run {
+                println("Error: No API key provided. Please set the NEWS_API_KEY environment variable or use the -k/--key option.")
+                return null
+            }
+
+            // Validate the country code
+            argCountryCode ?: envCountryCode ?: run {
+                println("Error: No country code provided. Please set the NEWS_COUNTRY_CODE environment variable or use the -c/--country-code option.")
+                return null
+            }
+
+            // Convert the country code string to a CountryCode enum entry
+            val countryCode = try {
+                CountryCode.valueOf((argCountryCode ?: envCountryCode).uppercase())
+            } catch (e: IllegalArgumentException) {
+                println("Error: Invalid country code provided. Please use a valid country code.")
+                return null
+            }
+
+
+            // Determine the final API key and refresh speed
+            val apiKey = argApiKey ?: envApiKey
+            val speed = argSpeed ?: envSpeed ?: 60
+
+            return Config(apiKey = apiKey, countryCode = countryCode, refreshInterval = speed.toLong())
+        }
+    }
 }
 
 /**
@@ -266,60 +313,19 @@ fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
  * @param args The command-line arguments. This is an array of strings.
  */
 fun main(args: Array<String>) {
-    // Create a command-line argument parser
-    val parser = ArgParser("NAPI")
-
-    // Define the command-line arguments
-    val apiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
-    val countryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
-    val speed by parser.option(ArgType.Int, shortName = "s", fullName = "speed", description = "Refresh speed in minutes")
-
-    // Parse the command-line arguments
-    parser.parse(args)
-
-    // Retrieve the environment variables
-    val envApiKey = System.getenv("NEWS_API_KEY")
-    val envCountryCode = System.getenv("NEWS_COUNTRY_CODE")
-    val envSpeed = System.getenv("NEWS_REFRESH_SPEED")?.toIntOrNull()
-
-    // Validate the API key
-    if (apiKey == null && envApiKey == null) {
-        println("Error: No API key provided. Please set the NEWS_API_KEY environment variable or use the -k/--key option.")
-        return
-    }
-
-    // Validate the country code
-    if (countryCode == null && envCountryCode == null) {
-        println("Error: No country code provided. Please set the NEWS_COUNTRY_CODE environment variable or use the -c/--country-code option.")
-        return
-    }
-
-    // Convert the country code to upper case
-    val finalCountryCodeString = (countryCode ?: envCountryCode).uppercase()
-
-    // Convert the country code string to a CountryCode enum entry
-    val finalCountryCode = try {
-        CountryCode.valueOf(finalCountryCodeString)
-    } catch (e: IllegalArgumentException) {
-        println("Error: Invalid country code provided. Please use a valid country code.")
-        return
-    }
+    val config = Config.getConfig(args) ?: return
 
     // Set up the database
     setupDB()
-
-    // Determine the final API key and refresh speed
-    val finalApiKey = apiKey ?: envApiKey
-    val finalSpeed = speed ?: envSpeed ?: 60
 
     // Create a single-threaded scheduled executor
     val executor = Executors.newSingleThreadScheduledExecutor()
 
     // Schedule a task to fetch and insert news articles at a fixed rate
     executor.scheduleAtFixedRate({
-        val news = getNews(finalApiKey, finalCountryCode)
+        val news = getNews(config.getApiKey(), config.getCountryCode())
         if (news != null) {
-            insertArticles(news.articles, finalCountryCode)
+            insertArticles(news.articles, config.getCountryCode())
         }
-    }, 0, finalSpeed.toLong(), TimeUnit.MINUTES)
+    }, 0, config.getRefreshInterval(), TimeUnit.MINUTES)
 }
