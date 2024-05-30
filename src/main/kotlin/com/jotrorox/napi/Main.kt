@@ -1,5 +1,6 @@
 package com.jotrorox.napi
 
+import com.akuleshov7.ktoml.Toml
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.akuleshov7.ktoml.file.TomlFileWriter
 import com.google.gson.Gson
@@ -229,17 +230,19 @@ data class Config(
             val apiKey = argApiKey ?: envApiKey
             val speed = argSpeed ?: envSpeed ?: 60
 
-            // If the
+            // If the flag is set save the config
+            if (saveconfig == true) saveToToml(Config(apiKey, countryCode, speed.toLong()))
 
             return Config(apiKey = apiKey, countryCode = countryCode, refreshInterval = speed.toLong())
         }
 
-        fun saveToToml(config: Config) {
+        private fun saveToToml(config: Config) {
             val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
             val tomlFile = File("$xdgConfigPath/napi/config.toml")
             tomlFile.parentFile.mkdirs()
             tomlFile.createNewFile()
-            TomlFileWriter.encodeToFile<Config>(serializer(), config, tomlFile)
+            val tomlString = Toml.encodeToString(serializer(), config)
+            tomlFile.writeText(tomlString)
         }
     }
 }
