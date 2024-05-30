@@ -1,5 +1,6 @@
 package com.jotrorox.napi
 
+import com.akuleshov7.ktoml.file.TomlFileReader
 import com.google.gson.Gson
 import com.jotrorox.napi.Articles.author
 import com.jotrorox.napi.Articles.content
@@ -15,10 +16,15 @@ import com.jotrorox.napi.Articles.url
 import com.jotrorox.napi.Articles.urlToImage
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
+import org.ini4j.Ini
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.net.HttpURLConnection
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.*
@@ -128,6 +134,24 @@ enum class CountryCode(val code: String) {
     US("us")   // United States
 }
 
+/**
+ * This class `Config` is responsible for holding the configuration data required for the main application.
+ *
+ * @property apiKey String: The Key provided by the API to authorize interactions with it. This key is private and thus only accessible through a getter method.
+ * @property countryCode CountryCode: The Country Code to be used with the API. This is private and can only be accessed through its associated getter.
+ * @property refreshInterval Long: The refresh interval for the main application in minutes. Available through a getter as it is private.
+ *
+ * The class also includes getter methods:
+ *
+ * - getApiKey: A method that returns the `apiKey`.
+ * - getCountryCode: A method that returns `countryCode`.
+ * - getRefreshInterval: A method that returns `refreshInterval`.
+ *
+ * This class also contains a `Companion object` which includes a method `getConfig` that is responsible for creating a `Config` instance from
+ * the command-line arguments, environment variables, and a configuration file. This function is crucial for processing and validating the configuration
+ * parameters like API key, Country code and Refresh interval. It can return null in case of missing or invalid mandatory parameters.
+ *
+ */
 data class Config(
     private val apiKey: String,
     private val countryCode: CountryCode,
@@ -139,11 +163,35 @@ data class Config(
 
     companion object {
         fun getConfig(args: Array<String>): Config? {
+            val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+
+            if (Files.exists(Paths.get("$xdgConfigPath/napi/config.toml"))) {
+                return TomlFileReader.decodeFromFile<Config>(serializer(), "$xdgConfigPath/napi/config.toml")
+            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.json"))) {
+                return Gson().fromJson(Files.readString(Paths.get("$xdgConfigPath/napi/config.json")), Config::class.java)
+            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.properties"))) {
+                val props = Properties()
+                props.load(Files.newInputStream(Paths.get("$xdgConfigPath/napi/config.properties")))
+                return Config(
+                    apiKey = props.getProperty("apiKey"),
+                    countryCode = CountryCode.valueOf(props.getProperty("countryCode")),
+                    refreshInterval = props.getProperty("refreshInterval").toLong()
+                )
+            } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.ini"))) {
+                val ini = Ini()
+                ini.load(Files.newInputStream(Paths.get("$xdgConfigPath/napi/config.ini")))
+                return Config(
+                    apiKey = ini.get("config", "apiKey"),
+                    countryCode = CountryCode.valueOf(ini.get("config", "countryCode")),
+                    refreshInterval = ini.get("config", "refreshInterval").toLong()
+                )
+            }
+
             // Create a command-line argument parser
             val parser = ArgParser("NAPI")
 
             // Define the command-line arguments
-            val argApiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key").
+            val argApiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
             val argCountryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
             val argSpeed by parser.option(ArgType.Int, shortName = "s", fullName = "speed", description = "Refresh speed in minutes")
 
@@ -174,7 +222,6 @@ data class Config(
                 println("Error: Invalid country code provided. Please use a valid country code.")
                 return null
             }
-
 
             // Determine the final API key and refresh speed
             val apiKey = argApiKey ?: envApiKey

@@ -18,6 +18,13 @@ dependencies {
     // JSON Support
     implementation("com.google.code.gson:gson:2.11.0")
 
+    // Toml Support
+    implementation("com.akuleshov7:ktoml-core:0.5.1")
+    implementation("com.akuleshov7:ktoml-file:0.5.1")
+
+    // Ini support
+    implementation("org.ini4j:ini4j:0.5.4")
+
     // Database support
     implementation("org.xerial:sqlite-jdbc:3.44.1.0")
     implementation("org.jetbrains.exposed", "exposed-core", exposedVersion)
