@@ -1,6 +1,6 @@
 package com.jotrorox.napi.util.db
 
-import com.jotrorox.napi.Article
+import com.jotrorox.napi.fetching.NewsApiFetcher.Article
 import com.jotrorox.napi.converters.getCurrentTime
 import com.jotrorox.napi.util.CountryCode
 import com.jotrorox.napi.util.db.Articles.title
