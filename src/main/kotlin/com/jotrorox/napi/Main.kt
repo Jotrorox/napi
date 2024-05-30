@@ -167,23 +167,46 @@ data class Config(
      */
     fun getApiKey() = apiKey
 
-/**
-* This function returns the Country Code in `CountryCode` format. This Country Code is used to specify the region for the API.
-* It is invoked on an instance of the Config class.
-*
-* @return countryCode: The Country Code used for region specification with the API.
-*/
+    /**
+     * This function returns the Country Code in `CountryCode` format. This Country Code is used to specify the region for the API.
+     * It is invoked on an instance of the Config class.
+     *
+     * @return countryCode: The Country Code used for region specification with the API.
+     */
     fun getCountryCode() = countryCode
+
+    /**
+     * This function returns the refresh interval in Long format. This interval is used to specify the refresh rate for the main application.
+     * It is invoked on an instance of the Config class.
+     *
+     * @return refreshInterval: The refresh interval for the main application in minutes.
+     */
     fun getRefreshInterval() = refreshInterval
 
     companion object {
+        /**
+         * This function is a part of `Companion object` of `Config` class and is responsible for creating a `Config`
+         * instance. It reads configuration from different sources (command-line arguments, environment variables, and
+         * a configuration file), validates them, and then creates a new instance of `Config` class.
+         *
+         * It is invoked open execution of the application and on every refresh during its runtime.
+         *
+         * @param args Array<String>: Accepts an array of arguments passed on the terminal while execution. The
+         * arguments should include key (-k/--key), country code (-c/--country-code), refresh speed (-r/--refresh-speed),
+         * and whether the current config needs to be saved as a file (-s/--save-config).
+         *
+         * @return Config?: A new instance of `Config` if all parameters have valid values, null otherwise.
+         */
         fun getConfig(args: Array<String>): Config? {
             val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
 
             if (Files.exists(Paths.get("$xdgConfigPath/napi/config.toml"))) {
                 return TomlFileReader.decodeFromFile<Config>(serializer(), "$xdgConfigPath/napi/config.toml")
             } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.json"))) {
-                return Gson().fromJson(Files.readString(Paths.get("$xdgConfigPath/napi/config.json")), Config::class.java)
+                return Gson().fromJson(
+                    Files.readString(Paths.get("$xdgConfigPath/napi/config.json")),
+                    Config::class.java
+                )
             } else if (Files.exists(Paths.get("$xdgConfigPath/napi/config.properties"))) {
                 val props = Properties()
                 props.load(Files.newInputStream(Paths.get("$xdgConfigPath/napi/config.properties")))
@@ -206,10 +229,30 @@ data class Config(
             val parser = ArgParser("NAPI")
 
             // Define the command-line arguments
-            val argApiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
-            val argCountryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
-            val argSpeed by parser.option(ArgType.Int, shortName = "r", fullName = "refresh-speed", description = "Refresh speed in minutes")
-            val saveconfig by parser.option(ArgType.Boolean, shortName = "s", fullName = "save-config", description = "Save the current config into a file (default is TOML)")
+            val argApiKey by parser.option(
+                ArgType.String,
+                shortName = "k",
+                fullName = "key",
+                description = "News API key"
+            )
+            val argCountryCode by parser.option(
+                ArgType.String,
+                shortName = "c",
+                fullName = "country-code",
+                description = "Country code"
+            )
+            val argSpeed by parser.option(
+                ArgType.Int,
+                shortName = "r",
+                fullName = "refresh-speed",
+                description = "Refresh speed in minutes"
+            )
+            val saveconfig by parser.option(
+                ArgType.Boolean,
+                shortName = "s",
+                fullName = "save-config",
+                description = "Save the current config into a file (default is TOML)"
+            )
 
             // Parse the command-line arguments
             parser.parse(args)
@@ -243,20 +286,84 @@ data class Config(
             val apiKey = argApiKey ?: envApiKey
             val speed = argSpeed ?: envSpeed ?: 60
 
+            val config = Config(apiKey, countryCode, speed.toLong())
+
             // If the flag is set save the config
-            if (saveconfig == true) saveToToml(Config(apiKey, countryCode, speed.toLong()))
+            if (saveconfig == true) config.saveToToml()
 
-            return Config(apiKey = apiKey, countryCode = countryCode, refreshInterval = speed.toLong())
+            return config
         }
+    }
 
-        private fun saveToToml(config: Config) {
-            val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
-            val tomlFile = File("$xdgConfigPath/napi/config.toml")
-            tomlFile.parentFile.mkdirs()
-            tomlFile.createNewFile()
-            val tomlString = Toml.encodeToString(serializer(), config)
-            tomlFile.writeText(tomlString)
-        }
+    /**
+     * This function saves the config data to a TOML file. The created TOML file can then be used for future
+     * configurations. The function abstracts the intricacies of working with TOML files, providing a simplified
+     * interaction layer for configuration management.
+     *
+     * It is invoked on an instance of the Config class.
+     */
+    private fun saveToToml() {
+        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+        val tomlFile = File("$xdgConfigPath/napi/config.toml")
+        tomlFile.parentFile.mkdirs()
+        tomlFile.createNewFile()
+        val tomlString = Toml.encodeToString(serializer(), this)
+        tomlFile.writeText(tomlString)
+    }
+
+
+    /**
+     * This function saves the configuration data to a JSON file. The JSON file can then be used for future
+     * configurations. The function abstracts the intricacies of working with JSON files, providing a simplified
+     * interaction layer for configuration management.
+     *
+     * It's invoked on an instance of the Config class.
+     */
+    private fun saveToJson() {
+        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+        val jsonFile = File("$xdgConfigPath/napi/config.json")
+        jsonFile.parentFile.mkdirs()
+        jsonFile.createNewFile()
+        val jsonString = Gson().toJson(this)
+        jsonFile.writeText(jsonString)
+    }
+
+    /**
+     * This function saves the configuration data to a Properties file. The Properties file can then be used for future
+     * configurations. The function abstracts the intricacies of working with Properties files, providing a simplified
+     * interaction layer for configuration management.
+     *
+     * It's invoked on an instance of the Config class.
+     */
+    private fun saveToProperties() {
+        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+        val propsFile = File("$xdgConfigPath/napi/config.properties")
+        propsFile.parentFile.mkdirs()
+        propsFile.createNewFile()
+        val props = Properties()
+        props.setProperty("apiKey", apiKey)
+        props.setProperty("countryCode", countryCode.name)
+        props.setProperty("refreshInterval", refreshInterval.toString())
+        props.store(propsFile.outputStream(), null)
+    }
+
+    /**
+     * This function saves the configuration data to an INI file. The INI file can then be used for future
+     * configurations. The function abstracts the intricacies of working with INI files, providing a simplified
+     * interaction layer for configuration management.
+     *
+     * It's invoked on an instance of the Config class.
+     */
+    private fun saveToIni() {
+        val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+        val iniFile = File("$xdgConfigPath/napi/config.ini")
+        iniFile.parentFile.mkdirs()
+        iniFile.createNewFile()
+        val ini = Ini()
+        ini.put("config", "apiKey", apiKey)
+        ini.put("config", "countryCode", countryCode.name)
+        ini.put("config", "refreshInterval", refreshInterval.toString())
+        ini.store(iniFile.outputStream())
     }
 }
 
@@ -324,7 +431,8 @@ fun getCurrentTime(): String {
  * @return A `LocalDateTime` object representing the same date and time as the input string.
  */
 fun getDateFromString(date: String): LocalDateTime {
-    return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId()).toLocalDateTime()
+    return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId())
+        .toLocalDateTime()
 }
 
 /**
