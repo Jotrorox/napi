@@ -1,21 +1,9 @@
 package com.jotrorox.napi
 
 import com.google.gson.Gson
-import com.jotrorox.napi.Articles.author
-import com.jotrorox.napi.Articles.content
-import com.jotrorox.napi.Articles.countryCode
-import com.jotrorox.napi.Articles.description
-import com.jotrorox.napi.Articles.fetchedAt
-import com.jotrorox.napi.Articles.id
-import com.jotrorox.napi.Articles.publishedAt
-import com.jotrorox.napi.Articles.sourceId
-import com.jotrorox.napi.Articles.sourceName
-import com.jotrorox.napi.Articles.title
-import com.jotrorox.napi.Articles.url
-import com.jotrorox.napi.Articles.urlToImage
 import com.jotrorox.napi.util.config.getConfig
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
+import com.jotrorox.napi.util.db.insertArticles
+import com.jotrorox.napi.util.db.setupDB
 import java.net.HttpURLConnection
 import java.net.URI
 import java.text.SimpleDateFormat
@@ -57,38 +45,6 @@ data class Article(
     val publishedAt: String,
     val content: String
 )
-
-/**
- * Represents the "articles" table in the database.
- *
- * @property id The unique identifier of the article. This is an auto-incrementing integer.
- * @property title The title of the article. This is a string with a maximum length of 1024 characters.
- * @property author The author of the article. This is a string with a maximum length of 1024 characters.
- * @property description A brief description of the article. This is a nullable string with a maximum length of 4096 characters.
- * @property url The URL where the article can be read. This is a string with a maximum length of 1024 characters.
- * @property urlToImage The URL of the image associated with the article. This is a nullable string with a maximum length of 1024 characters.
- * @property publishedAt The date and time when the article was published. This is a string with a maximum length of 1024 characters.
- * @property content The content of the article. This is a nullable string with a maximum length of 8192 characters.
- * @property sourceName The name of the source from which the article originates. This is a string with a maximum length of 1024 characters.
- * @property sourceId The unique identifier of the source. This is a string with a maximum length of 1024 characters.
- * @property fetchedAt The date and time when the article was fetched. This is a string with a maximum length of 1024 characters.
- * @property countryCode The country code associated with the article. This is a string with a maximum length of 2 characters.
- */
-data object Articles : Table("articles") {
-    private val id = integer("id").autoIncrement()
-    val title = varchar("title", 1024)
-    val author = varchar("author", 1024)
-    val description = varchar("description", 4096).nullable()
-    val url = varchar("url", 1024)
-    val urlToImage = varchar("urlToImage", 1024).nullable()
-    val publishedAt = varchar("publishedAt", 1024)
-    val content = varchar("content", 8192).nullable()
-    val sourceName = varchar("sourceName", 1024)
-    val sourceId = varchar("sourceId", 1024)
-    val fetchedAt = varchar("fetchedAt", 1024)
-    val countryCode = varchar("countryCode", 2)
-    override val primaryKey = PrimaryKey(id)
-}
 
 /**
  * Represents the response from the API.
@@ -154,20 +110,6 @@ fun getNews(apiKey: String, countryCode: CountryCode): ApiResponse? {
 }
 
 /**
- * Sets up the database connection and creates the articles table if it doesn't exist.
- *
- * This function connects to a SQLite database named "news.db" using the SQLite JDBC driver.
- * Then, it creates the "articles" table in the database if it doesn't already exist.
- * The "articles" table is represented by the `Articles` object.
- */
-fun setupDB() {
-    Database.connect("jdbc:sqlite:news.db", "org.sqlite.JDBC")
-    transaction {
-        SchemaUtils.create(Articles)
-    }
-}
-
-/**
  * Gets the current time in the format "yyyy-MM-dd HH:mm:ss".
  *
  * This function uses the `SimpleDateFormat` class to format the current date and time into a string.
@@ -193,57 +135,6 @@ fun getCurrentTime(): String {
 fun getDateFromString(date: String): LocalDateTime {
     return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId())
         .toLocalDateTime()
-}
-
-/**
- * Checks if a given article is already stored in the database.
- *
- * This function starts a transaction and selects all records from the "articles" table.
- * It then filters the records by comparing the title of each record with the title of the given article.
- * If the count of matching records is greater than 0, the function returns true, indicating that the article is already stored.
- * Otherwise, it returns false.
- *
- * @param article The article to check. This is an `Article` object.
- * @return A boolean value indicating whether the article is already stored in the database.
- */
-fun isArticleStored(article: Article): Boolean {
-    return transaction {
-        Articles.selectAll().where { title eq article.title }.count() > 0
-    }
-}
-
-/**
- * Inserts a list of articles into the database.
- *
- * This function starts a transaction and iterates over each article in the provided list.
- * For each article, it first checks if the article is already stored in the database by calling the `isArticleStored` function.
- * If the article is already stored, it skips to the next article.
- * Otherwise, it inserts the article into the "articles" table in the database.
- * The values for the columns of the table are taken from the properties of the `Article` object.
- * The `fetchedAt` column is set to the current date and time, and the `countryCode` column is set to the code of the provided `CountryCode` enum entry.
- *
- * @param articles The list of articles to insert. This is a list of `Article` objects.
- * @param countryCode The country code associated with the articles. This is a `CountryCode` enum entry.
- */
-fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
-    transaction {
-        articles.forEach { article ->
-            if (isArticleStored(article)) return@forEach
-            Articles.insert {
-                it[title] = article.title
-                it[author] = article.author
-                it[description] = article.description
-                it[url] = article.url
-                it[urlToImage] = article.urlToImage
-                it[publishedAt] = article.publishedAt
-                it[content] = article.content
-                it[sourceName] = article.source.name
-                it[sourceId] = article.source.id
-                it[fetchedAt] = getCurrentTime()
-                it[Articles.countryCode] = countryCode.code
-            }
-        }
-    }
 }
 
 /**
