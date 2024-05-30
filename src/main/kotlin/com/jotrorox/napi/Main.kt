@@ -159,7 +159,20 @@ data class Config(
     private val countryCode: CountryCode,
     private val refreshInterval: Long
 ) {
+    /**
+     * This function returns the API key in String format. This API key is used to authorize interactions with the API.
+     * It is invoked on an instance of the Config class.
+     *
+     * @return apiKey: The API key used for interactions with the API.
+     */
     fun getApiKey() = apiKey
+
+/**
+* This function returns the Country Code in `CountryCode` format. This Country Code is used to specify the region for the API.
+* It is invoked on an instance of the Config class.
+*
+* @return countryCode: The Country Code used for region specification with the API.
+*/
     fun getCountryCode() = countryCode
     fun getRefreshInterval() = refreshInterval
 
