@@ -2,7 +2,7 @@ package com.jotrorox.napi.util.config
 
 import com.akuleshov7.ktoml.file.TomlFileReader
 import com.google.gson.Gson
-import com.jotrorox.napi.CountryCode
+import com.jotrorox.napi.util.CountryCode
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.serialization.serializer
@@ -11,6 +11,27 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 
+/**
+ * This function gets the system configuration values.
+ *
+ * @param args an array of input arguments passed to the function. The arguments could be a News API key,
+ * a country code, refresh speed in minutes, and/or a flag to save the current configuration into a file.
+ *
+ * Depending upon the presence of a particular configuration file (`config.toml`, `config.json`, `config.properties`, `config.ini`)
+ * in a standardized location (`$XDG_CONFIG_HOME/napi/` or `~/.config/napi/`) on the user's system, it decodes the configuration from the file.
+ *
+ * If no such configuration file exists, it processes command-line arguments
+ * and checks the presence of environment variables (`NEWS_API_KEY`, `NEWS_COUNTRY_CODE`, `NEWS_REFRESH_SPEED`)
+ * to get the necessary configuration values.
+ *
+ * This function validates the API key and country code. If either is not provided, it prompts error messages and returns `null`.
+ *
+ * If necessary, it saves the current configuration into a `.toml` file.
+ *
+ * @return returns a `Config` object containing the configuration properties. If an API key or a country code is not provided, it returns `null`.
+ *
+ * @throws IllegalArgumentException if the country code supplied does not match any entry in the `CountryCode` enum.
+ */
 fun getConfig(args: Array<String>): Config? {
     val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
 

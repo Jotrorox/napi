@@ -2,7 +2,7 @@ package com.jotrorox.napi.util.config
 
 import com.akuleshov7.ktoml.Toml
 import com.google.gson.Gson
-import com.jotrorox.napi.CountryCode
+import com.jotrorox.napi.util.CountryCode
 import kotlinx.serialization.serializer
 import org.ini4j.Ini
 import java.io.File

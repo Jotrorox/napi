@@ -1,14 +1,12 @@
 package com.jotrorox.napi
 
 import com.google.gson.Gson
+import com.jotrorox.napi.util.CountryCode
 import com.jotrorox.napi.util.config.getConfig
 import com.jotrorox.napi.util.db.insertArticles
 import com.jotrorox.napi.util.db.setupDB
 import java.net.HttpURLConnection
 import java.net.URI
-import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -60,30 +58,6 @@ data class ApiResponse(
 )
 
 /**
- * Represents the country codes used in the API.
- *
- * Each enum entry represents a country code, and the associated string value is the actual code used in the API.
- *
- * @property code The actual country code used in the API.
- */
-enum class CountryCode(val code: String) {
-    AR("ar"),  // Argentina
-    AU("au"),  // Australia
-    BR("br"),  // Brazil
-    CA("ca"),  // Canada
-    CN("cn"),  // China
-    DE("de"),  // Germany
-    FR("fr"),  // France
-    GB("gb"),  // United Kingdom
-    IN("in"),  // India
-    IT("it"),  // Italy
-    JP("jp"),  // Japan
-    KR("kr"),  // South Korea
-    RU("ru"),  // Russia
-    US("us")   // United States
-}
-
-/**
  * Fetches news from the API.
  *
  * This function sends a GET request to the News API to fetch the top headlines for a specific country.
@@ -96,7 +70,7 @@ enum class CountryCode(val code: String) {
  * @return An `ApiResponse` object if the request is successful, or null if the request is not successful.
  */
 fun getNews(apiKey: String, countryCode: CountryCode): ApiResponse? {
-    val url = URI("https://newsapi.org/v2/top-headlines?country=${countryCode.code}&apiKey=$apiKey")
+    val url = URI("https://newsapi.org/v2/top-headlines?country=${countryCode.getCode()}&apiKey=$apiKey")
 
     val connection = url.toURL().openConnection() as HttpURLConnection
     connection.requestMethod = "GET"
@@ -107,34 +81,6 @@ fun getNews(apiKey: String, countryCode: CountryCode): ApiResponse? {
     }
 
     return Gson().fromJson(connection.inputStream.bufferedReader().readText(), ApiResponse::class.java)
-}
-
-/**
- * Gets the current time in the format "yyyy-MM-dd HH:mm:ss".
- *
- * This function uses the `SimpleDateFormat` class to format the current date and time into a string.
- * The format used is "yyyy-MM-dd HH:mm:ss", which represents the year, month, day, hour, minute, and second.
- *
- * @return A string representing the current date and time.
- */
-fun getCurrentTime(): String {
-    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
-}
-
-/**
- * Converts a string representation of a date into a `LocalDateTime` object.
- *
- * This function uses the `SimpleDateFormat` class to parse the input string into a `Date` object.
- * The input string is expected to be in the format "yyyy-MM-dd'T'HH:mm:ss'Z'".
- * The function then converts the `Date` object into an `Instant`, adjusts it to the system's default time zone,
- * and finally converts it into a `LocalDateTime` object.
- *
- * @param date A string representing a date and time. The string is expected to be in the format "yyyy-MM-dd'T'HH:mm:ss'Z'".
- * @return A `LocalDateTime` object representing the same date and time as the input string.
- */
-fun getDateFromString(date: String): LocalDateTime {
-    return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").parse(date).toInstant().atZone(TimeZone.getDefault().toZoneId())
-        .toLocalDateTime()
 }
 
 /**

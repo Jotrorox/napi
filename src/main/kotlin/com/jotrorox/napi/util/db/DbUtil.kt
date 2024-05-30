@@ -1,8 +1,8 @@
 package com.jotrorox.napi.util.db
 
 import com.jotrorox.napi.Article
-import com.jotrorox.napi.CountryCode
-import com.jotrorox.napi.getCurrentTime
+import com.jotrorox.napi.converters.getCurrentTime
+import com.jotrorox.napi.util.CountryCode
 import com.jotrorox.napi.util.db.Articles.title
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -55,7 +55,7 @@ fun insertArticles(articles: List<Article>, countryCode: CountryCode) {
                 it[sourceName] = article.source.name
                 it[sourceId] = article.source.id
                 it[fetchedAt] = getCurrentTime()
-                it[Articles.countryCode] = countryCode.code
+                it[Articles.countryCode] = countryCode.getCode()
             }
         }
     }
