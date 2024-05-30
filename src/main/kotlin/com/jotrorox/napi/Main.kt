@@ -86,7 +86,7 @@ data object Articles : Table("articles") {
     val content = varchar("content", 8192).nullable()
     val sourceName = varchar("sourceName", 1024)
     val sourceId = varchar("sourceId", 1024)
-    val fetchedAt = varchar("fetchedAt", 1024)       // yyyy-MM-dd HH:mm:ss
+    val fetchedAt = varchar("fetchedAt", 1024)
     val countryCode = varchar("countryCode", 2)
     override val primaryKey = PrimaryKey(id)
 }
@@ -126,6 +126,16 @@ enum class CountryCode(val code: String) {
     KR("kr"),  // South Korea
     RU("ru"),  // Russia
     US("us")   // United States
+}
+
+data class Config(
+    private val apiKey: String,
+    private val countryCode: CountryCode,
+    private val refreshInterval: Long
+) {
+    fun getApiKey() = apiKey
+    fun getCountryCode() = countryCode
+    fun getRefreshInterval() = refreshInterval
 }
 
 /**
