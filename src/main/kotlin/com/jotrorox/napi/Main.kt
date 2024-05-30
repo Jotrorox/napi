@@ -1,6 +1,7 @@
 package com.jotrorox.napi
 
 import com.akuleshov7.ktoml.file.TomlFileReader
+import com.akuleshov7.ktoml.file.TomlFileWriter
 import com.google.gson.Gson
 import com.jotrorox.napi.Articles.author
 import com.jotrorox.napi.Articles.content
@@ -16,11 +17,11 @@ import com.jotrorox.napi.Articles.url
 import com.jotrorox.napi.Articles.urlToImage
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import org.ini4j.Ini
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.file.Files
@@ -193,7 +194,8 @@ data class Config(
             // Define the command-line arguments
             val argApiKey by parser.option(ArgType.String, shortName = "k", fullName = "key", description = "News API key")
             val argCountryCode by parser.option(ArgType.String, shortName = "c", fullName = "country-code", description = "Country code")
-            val argSpeed by parser.option(ArgType.Int, shortName = "s", fullName = "speed", description = "Refresh speed in minutes")
+            val argSpeed by parser.option(ArgType.Int, shortName = "r", fullName = "refresh-speed", description = "Refresh speed in minutes")
+            val saveconfig by parser.option(ArgType.Boolean, shortName = "s", fullName = "save-config", description = "Save the current config into a file (default is TOML)")
 
             // Parse the command-line arguments
             parser.parse(args)
@@ -227,7 +229,17 @@ data class Config(
             val apiKey = argApiKey ?: envApiKey
             val speed = argSpeed ?: envSpeed ?: 60
 
+            // If the
+
             return Config(apiKey = apiKey, countryCode = countryCode, refreshInterval = speed.toLong())
+        }
+
+        fun saveToToml(config: Config) {
+            val xdgConfigPath = System.getenv("XDG_CONFIG_HOME") ?: "${System.getProperty("user.home")}/.config"
+            val tomlFile = File("$xdgConfigPath/napi/config.toml")
+            tomlFile.parentFile.mkdirs()
+            tomlFile.createNewFile()
+            TomlFileWriter.encodeToFile<Config>(serializer(), config, tomlFile)
         }
     }
 }
