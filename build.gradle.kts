@@ -33,6 +33,9 @@ dependencies {
 
     // Better Command Line features
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
+
+    // A framework providing Logging for the slf4J Standard
+    implementation("org.slf4j:slf4j-simple:2.1.0-alpha1")
 }
 
 application {
